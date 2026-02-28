@@ -4,6 +4,34 @@ from PIL import Image
 import threading
 import time
 
+from flask_sock import Sock
+import pyautogui
+import json
+
+sock = Sock(app)
+
+@sock.route("/ws")
+def ws_route(ws):
+    ip = get_client_ip()
+    if not is_verified(ip):
+        ws.close()
+        return
+
+    while True:
+        try:
+            msg = ws.receive()
+            if msg is None:
+                break
+            event = json.loads(msg)
+            if event["type"] == "mouse":
+                x, y = event["x"], event["y"]
+                pyautogui.moveTo(x, y)
+            elif event["type"] == "click":
+                button = event.get("button", "left")
+                pyautogui.click(button=button)
+        except:
+            break
+
 AUTH_FILE = "auth.json"
 app = Flask(__name__)
 
