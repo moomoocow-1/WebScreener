@@ -27,21 +27,31 @@ def is_verified(ip):
     return ip in auth["verified_ips"]
 
 # ---- Product key endpoint ----
-@app.route("/verify", methods=["POST"])
+@app.route("/verify", methods=["GET", "POST"])
 def verify_key():
-    data = request.json
-    if not data or "key" not in data:
-        return jsonify({"error": "Missing key"}), 400
+    if request.method == "GET":
+        # HTML form for the Chromebook
+        return '''
+            <h2>Enter Product Key</h2>
+            <form method="POST">
+                Product Key: <input name="key" required>
+                <input type="submit" value="Verify">
+            </form>
+        '''
+    
+    # POST submission from form
+    key = request.form.get("key")
+    if not key:
+        return "Missing key", 400
 
-    key = data["key"]
     ip = get_client_ip()
     auth = load_auth()
 
     if ip in auth["verified_ips"]:
-        return jsonify({"status": "already_verified"})
+        return "<h3>Already verified!</h3><a href='/video'>Go to stream</a>"
 
     if key not in auth["valid_keys"]:
-        return jsonify({"error": "Invalid or used key"}), 403
+        return "<h3>Invalid or used key!</h3>"
 
     # Mark key as used
     auth["valid_keys"].remove(key)
@@ -49,7 +59,7 @@ def verify_key():
     auth["verified_ips"].append(ip)
     save_auth(auth)
 
-    return jsonify({"status": "verified"})
+    return "<h3>Verified!</h3><a href='/video'>Go to stream</a>"
 
 # ---- MJPEG streaming ----
 latest_frame = None
