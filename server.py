@@ -82,3 +82,62 @@ def answer():
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=PORT)
+
+
+@app.route("/control.html")
+def control():
+    ip = get_client_ip()
+    if not is_verified(ip):
+        return "Unauthorized", 403
+    # Return HTML directly
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Remote Control</title>
+    </head>
+    <body>
+        <h2>Remote Desktop</h2>
+        <video id="video" autoplay playsinline></video>
+
+        <script>
+        const pc = new RTCPeerConnection();
+        const video = document.getElementById("video");
+
+        pc.ontrack = e => { video.srcObject = e.streams[0]; };
+
+        const channel = pc.createDataChannel("input");
+
+        document.addEventListener("mousemove", e => {
+            channel.send(JSON.stringify({type:"mouse", x:e.clientX, y:e.clientY}));
+        });
+        document.addEventListener("click", e => {
+            channel.send(JSON.stringify({type:"click"}));
+        });
+
+        async function start() {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const r = await fetch("/offer", {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body: JSON.stringify(pc.localDescription)
+            });
+            await r.json();
+
+            let answer;
+            while(true){
+                const res = await fetch("/answer");
+                answer = await res.json();
+                if(answer.type === "answer") break;
+                await new Promise(r=>setTimeout(r,500));
+            }
+
+            await pc.setRemoteDescription(answer);
+        }
+        start();
+        </script>
+    </body>
+    </html>
+    """
