@@ -2,3 +2,5 @@ flask
 pillow
 mss
 requests
+flask-sock 
+pyautogui
