@@ -9,6 +9,10 @@ app = Flask(__name__)
 latest_frame = None
 frame_lock = threading.Lock()
 
+@app.route("/")
+def index():
+    return "Server is running! Go to /video for the stream."
+
 # Endpoint for PC agent to POST JPEG frames
 @app.route("/frame", methods=["POST"])
 def receive_frame():
